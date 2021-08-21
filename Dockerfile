@@ -15,8 +15,8 @@ RUN apt-get update && apt-get upgrade -yqq && \
           git \
           lsb-release \
           pkg-config \
-          python \
-          python-pip \
+          python3 \
+          python3-pip \
           build-essential \
           cmake \
           ninja-build \
