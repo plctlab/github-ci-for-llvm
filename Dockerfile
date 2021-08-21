@@ -47,12 +47,12 @@ RUN echo "TODO: Add code sytle check here."
 FROM llvm-plct as llvm-debug-build
 RUN mkdir build
 WORKDIR /llvm-project/build
-ENV MAX_LINK_JOBS $(free --giga | grep Mem | awk '{print int($2 / 16)}')
+# ENV MAX_LINK_JOBS $(free --giga | grep Mem | awk '{print int($2 / 16)}')
 RUN cmake \
-    -DLLVM_PARALLEL_LINK_JOBS=${MAX_LINK_JOBS} \
+    CMAKE_BUILD_TYPE="Debug" \
+    -DLLVM_PARALLEL_LINK_JOBS=8 \
     -DLLVM_TARGETS_TO_BUILD="X86;RISCV" \
     -DLLVM_ENABLE_PROJECTS="clang" \
-    -CMAKE_BUILD_TYPE="Debug" \
     -G Ninja ../llvm
 RUN ninja
 
