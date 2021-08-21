@@ -45,7 +45,7 @@ RUN echo "TODO: Add code sytle check here."
 
 
 FROM llvm-plct as llvm-debug-build
-RUN make build
+RUN mkdir build
 WORKDIR /llvm-project/build
 RUN cmake \
     -DLLVM_PARALLEL_LINK_JOBS=`free --giga | grep Mem | awk '{print int($2 / 16)}'` \
