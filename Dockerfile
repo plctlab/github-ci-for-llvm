@@ -4,11 +4,11 @@
 #   docker build --build-arg pr_num=NNN .
 # ==============================================================================
 
-FROM ubuntu:bionic as v8-base
+FROM ubuntu:focal as llvm-base
 
 RUN apt-get upgrade -yqq
 
-RUN apt-get update && \
+RUN apt-get update && apt-get upgrade -yqq && \
      DEBIAN_FRONTEND=noninteractive \
      apt-get -yqq install \
           curl \
@@ -17,48 +17,43 @@ RUN apt-get update && \
           pkg-config \
           python \
           python-pip \
+          build-essential \
+          cmake \
+          ninja-build \
           sudo \
           tzdata
 
-RUN pip install coverage
-RUN pip install numpy
-RUN pip install mock
+RUN git clone https://github.com/llvm/llvm-project.git
 
-RUN git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
+FROM llvm-base as llvm-plct
 
-ENV PATH="/depot_tools:${PATH}"
-
-RUN fetch v8
-
-RUN (cd /v8 && ./build/install-build-deps.sh --no-prompt --no-arm)
-
-
-FROM v8-base as v8-riscv
-
-ARG repo=v8-riscv/v8
+ARG repo=plctlab/llvm-project
 ENV GITHUB_REPOSITORY=$repo
 ARG pr_num=1
 ENV PR_NUM=$pr_num
 ARG sha=xxx
 
-COPY commit-msg-check.sh /root/commit-msg-check.sh
-WORKDIR /v8
-RUN (git remote add riscv https://github.com/${GITHUB_REPOSITORY} && \
-     git fetch riscv pull/${PR_NUM}/head:ci-${PR_NUM} && \
+WORKDIR /llvm-project
+RUN (git remote add plct https://github.com/${GITHUB_REPOSITORY} && \
+     git fetch plct pull/${PR_NUM}/head:ci-${PR_NUM} && \
      git checkout ci-${PR_NUM})
 
 
-FROM v8-riscv as v8-precheck
-RUN git fetch riscv riscv64
-RUN bash /root/commit-msg-check.sh riscv/riscv64 $(git log --format="%H" -n 1)
-RUN gclient sync --with_branch_heads --with_tags
-RUN python tools/v8_presubmit.py --no-linter-cache
+FROM llvm-plct as llvm-precheck
+RUN git fetch -v --all
+RUN echo "TODO: Add code sytle check here."
 
 
-FROM v8-riscv as v8-build
-RUN gclient sync --with_branch_heads --with_tags
-RUN ./tools/dev/gm.py riscv64.debug.all --progress=verbose
+FROM llvm-plct as llvm-debug-build
+RUN make build
+WORKDIR /llvm-project/build
+RUN cmake \
+    -DLLVM_PARALLEL_LINK_JOBS=`free --giga | grep Mem | awk '{print int($2 / 16)}'` \
+    -DLLVM_TARGETS_TO_BUILD="X86;RISCV" \
+    -DLLVM_ENABLE_PROJECTS="clang" \
+    -CMAKE_BUILD_TYPE="Debug" \
+    -G Ninja ../llvm
+RUN ninja
 
-
-FROM v8-build as v8-run
-RUN ./tools/dev/gm.py riscv64.debug.checkall --progress=verbose
+FROM llvm-debug-build as llvm-debug-test
+RUN ninja check

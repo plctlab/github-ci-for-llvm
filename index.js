@@ -9,7 +9,7 @@ const { Webhooks } = require("@octokit/webhooks");
 const { Octokit } = require("@octokit/rest");
 const octokit = new Octokit({
   auth: process.env.GITHUB_TOKEN,
-  userAgent: "v8-riscv CI v1.0.0",
+  userAgent: "plctlab/llvm CI v1.0.0",
 });
 
 const webhooks = new Webhooks({
@@ -61,7 +61,7 @@ function runPrecheck(prNum, sha) {
       `pr_num=${prNum}`,
       "--build-arg",
       `sha=${sha}`,
-      "--target=v8-precheck",
+      "--target=llvm-precheck",
       ".",
     ], {
       env: { ...process.env, DOCKER_BUILDKIT: 1 }
@@ -96,7 +96,7 @@ function runBuild(prNum, sha) {
       `pr_num=${prNum}`,
       "--build-arg",
       `sha=${sha}`,
-      "--target=v8-build",
+      "--target=llvm-debug-build",
       ".",
     ], {
       env: { ...process.env, DOCKER_BUILDKIT: 1 }
@@ -327,8 +327,8 @@ async function handlePullRequestReview(payload) {
 
 async function handlePush(payload) {
   if (
-    payload.repository.full_name != `${config.owner}/${config.repo}` ||
-    payload.ref != "refs/heads/riscv64"
+    payload.repository.full_name != `${config.owner}/${config.repo}` // ||
+    // payload.ref != "refs/heads/riscv64"
   ) {
     console.log(
       `Ignoring push to ${payload.repository.full_name}:${payload.ref}`

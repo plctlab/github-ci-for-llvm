@@ -6,34 +6,56 @@
 
 FROM ubuntu:bionic as v8-base
 
-RUN apt-get update && apt-get upgrade -yqq
+FROM ubuntu:focal as llvm-base
 
-RUN DEBIAN_FRONTEND=noninteractive \
-    apt-get -yqq install git \
-                         curl \
-                         python \
-                         lsb-release \
-                         pkg-config \
-                         tzdata \
-                         sudo
+RUN apt-get upgrade -yqq
 
-RUN git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
+RUN apt-get update && apt-get upgrade -yqq && \
+     DEBIAN_FRONTEND=noninteractive \
+     apt-get -yqq install \
+          curl \
+          git \
+          lsb-release \
+          pkg-config \
+          python \
+          python-pip \
+          build-essential \
+          cmake \
+          ninja-build \
+          sudo \
+          tzdata
 
-ENV PATH="/depot_tools:${PATH}"
+RUN git clone https://github.com/llvm/llvm-project.git
 
-RUN fetch v8
+FROM llvm-base as llvm-plct
 
-RUN (cd /v8 && ./build/install-build-deps.sh --no-prompt --no-arm)
-
-
-FROM v8-base as v8-release
-
-ARG repo=v8-riscv/v8
+ARG repo=plctlab/llvm-project
 ENV GITHUB_REPOSITORY=$repo
+ARG pr_num=1
+ENV PR_NUM=$pr_num
+ARG sha=xxx
 
-WORKDIR /v8
-RUN git remote add riscv https://github.com/${GITHUB_REPOSITORY}
-RUN git fetch riscv riscv64
-RUN git checkout riscv64
-RUN gclient sync --with_branch_heads --with_tags
-RUN ./tools/dev/gm.py riscv64.release.all
+WORKDIR /llvm-project
+RUN (git remote add plct https://github.com/${GITHUB_REPOSITORY} && \
+     git fetch plct pull/${PR_NUM}/head:ci-${PR_NUM} && \
+     git checkout ci-${PR_NUM})
+
+
+FROM llvm-plct as llvm-precheck
+RUN git fetch -v --all
+RUN echo "TODO: Add code sytle check here."
+
+
+FROM llvm-plct as llvm-release-build
+RUN make build
+WORKDIR /llvm-project/build
+RUN cmake \
+    -DLLVM_PARALLEL_LINK_JOBS=`free --giga | grep Mem | awk '{print int($2 / 16)}'` \
+    -DLLVM_TARGETS_TO_BUILD="X86;RISCV" \
+    -DLLVM_ENABLE_PROJECTS="clang" \
+    -CMAKE_BUILD_TYPE="Release" \
+    -G Ninja ../llvm
+RUN ninja
+
+FROM llvm-release-build as llvm-release-test
+RUN ninja check

@@ -1,12 +1,12 @@
 {
-  "name": "v8-riscv-ci",
+  "name": "llvm-builder-plctlab",
   "version": "1.0.0",
-  "description": "CI webhook server for V8 RISC-V project",
+  "description": "CI webhook server for LLVM project",
   "main": "index.js",
   "scripts": {
     "start": "npx nodemon index.js"
   },
-  "author": "Brice Dobry",
+  "author": "Brice Dobry, Wei Wu",
   "license": "ISC",
   "dependencies": {
     "@octokit/rest": "^18.0.12",

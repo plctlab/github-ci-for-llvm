@@ -1,5 +1,5 @@
 {
-    "owner": "riscv",
-    "memberGroup": "v8-riscv",
-    "repo": "v8"
+    "owner": "plctlab",
+    "memberGroup": "llvm",
+    "repo": "llvm-project"
 }
